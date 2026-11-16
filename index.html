@@ -1,0 +1,71 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#141918"><title>Mayday – Monomoteur</title><link rel="stylesheet" href="style.css?v=18"><script defer src="terrain.js?v=18"></script><script defer src="game.js?v=18"></script></head>
+<body><main class="app"><header><a class="brand" href="./"><span class="logo">✈</span><span>MAYDAY<small>MONOMOTEUR</small></span></a><div class="head-right"><span id="mission">VOL LIBRE</span><button id="sound" hidden aria-pressed="false">Activer le son</button><button id="pause" disabled>Pause</button></div></header>
+<section class="cockpit" aria-label="Cockpit">
+<div class="window"><canvas id="terrain" aria-label="Vue en mouvement depuis le pare-brise"></canvas><div class="vignette"></div><div class="pillar"></div><div class="cowling"></div><div class="side-sill"></div><div class="side-wing"></div><div id="smoke"></div>
+<div class="hud"><span id="location">POITIERS-BIARD · LFBI</span><span id="clock">00:00</span></div>
+<div class="compass"><small>CAP</small> <strong id="heading">090°</strong></div><div id="surface-cue" hidden></div>
+<div class="window-post left-post"></div><div class="window-post right-post"></div><div id="landmarks" aria-hidden="true"></div><div id="runway-pin" hidden aria-hidden="true"><span id="runway-pin-label">Piste</span></div><div class="view-controls" role="group" aria-label="Direction du regard"><button data-view="-87" aria-pressed="false">← Gauche</button><button data-view="0" aria-pressed="true">↑ Devant</button><button data-view="87" aria-pressed="false">Droite →</button></div><div id="markers" aria-label="Repères au sol"></div>
+<div class="notice" id="notice" aria-live="polite">En attente de la mission</div>
+</div>
+<div class="navigation-strip" aria-label="Aide à la navigation piste">
+  <span id="aircraft-badge">Evektor SportStar RTC</span>
+  <span id="nav-runway">Piste</span>
+  <span class="nav-item"><small>CAP VERS LE SEUIL</small><strong id="nav-bearing">—</strong></span>
+  <span class="nav-item"><small>AXE DE PISTE</small><strong id="nav-axis">—</strong></span>
+  <span id="nav-distance">—</span>
+  <button id="runway-camera" aria-pressed="false" title="Regarder vers la piste · P">Voir la piste</button>
+</div>
+<div class="dashboard">
+<div class="gauges" aria-label="Instruments" id="gauges"></div>
+<div class="right-panel"><div class="engine-controls"><label for="throttle">GAZ <output id="throttle-value">74 %</output></label><input id="throttle" type="range" min="0" max="100" value="74" aria-label="Manette des gaz"><button id="carb" aria-pressed="false">Réchauffe carbu <strong>Froid</strong></button></div>
+<div class="fuel-controls">
+  <div class="fuel-selector" role="group" aria-label="Sélecteur de réservoir">
+    <div><span>CARBURANT</span><output id="fuel-tanks">G 64 % · D 64 %</output></div>
+    <div class="fuel-buttons"><button data-fuel="left" aria-pressed="false">Gauche</button><button data-fuel="both" aria-pressed="true">Les deux</button><button data-fuel="right" aria-pressed="false">Droite</button><button data-fuel="off" aria-pressed="false">Fermé</button></div>
+  </div>
+  <button id="mixture" aria-label="Mixture, basculer entre riche et STOP" aria-pressed="false">Mixture<strong id="mixture-label">RICHE</strong></button>
+</div>
+<div class="controls">
+<div class="controls-head"><span>INCLINAISON</span><div class="angles" aria-label="Inclinaison du virage"><button data-angle="10">10°</button><button data-angle="20">20°</button><button data-angle="30" class="active">30°</button><button data-angle="45">45°</button></div></div>
+<div class="arrows"><button data-command="left" aria-label="Tourner à gauche">←</button><button data-command="up" aria-label="Monter">↑</button><button data-command="wings" aria-label="Ailes à plat" title="Ailes à plat">━</button><button data-command="down" aria-label="Descendre">↓</button><button data-command="right" aria-label="Tourner à droite">→</button></div>
+<div class="flight-line"><span id="mode">PALIER</span><span id="cycles"></span><button data-command="level" title="Ramener l’assiette au palier">Palier</button></div>
+<div class="landing-controls" aria-label="Commandes d’atterrissage">
+<div class="flap-control"><button data-command="flap-up" aria-label="Rentrer les volets">−</button><span>VOLETS <strong id="flaps">0°</strong></span><button data-command="flap-down" aria-label="Sortir les volets">+</button></div>
+<div class="rudder-control" role="group" aria-label="Palonniers"><button data-rudder="-1" aria-label="Palonnier gauche" title="Maintenir · Q">‹</button><span>PALONNIERS</span><button data-rudder="1" aria-label="Palonnier droit" title="Maintenir · D">›</button></div><button data-command="brake" id="brake" aria-pressed="false">Freins <kbd>B</kbd></button>
+</div>
+</div>
+</div></div></section>
+<section class="actions"><div><span class="eyebrow">GESTION DE L’INCIDENT</span><p id="objective">Observe le cockpit et choisis comment réagir.</p></div><div class="action-buttons"><button data-command="scan">Instruments <kbd>I</kbd></button><button data-command="secure">Sécuriser <kbd>S</kbd></button><button data-command="land" title="Aide à l’arrondi. Le toucher des roues est automatique." class="accent">Se poser <kbd>A</kbd></button></div></section>
+<div class="ground"><span class="eyebrow">REPÈRES AU SOL</span><div id="ground"></div></div>
+<footer>Commandes tactiles et clavier · Repérage des champs pour le jeu · <a href="https://geoservices.ign.fr/rpg" target="_blank" rel="noopener">Parcelles agricoles ASP / IGN</a> · <a href="https://www.data.gouv.fr/datasets/referentiel-a-grande-echelle-rge" target="_blank" rel="noopener">Photographies aériennes © IGN / Géoplateforme</a></footer>
+</main>
+<div class="overlay" id="overlay"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title"><span class="eyebrow" id="kicker">JEU DE COCKPIT</span><h1 id="modal-title">Mayday<span>.</span></h1><p id="intro">Tu es seul aux commandes d’un monomoteur. Observe les instruments, réagis à la panne et trouve un terrain où te poser.</p>
+<div id="scenarios" class="scenarios">
+<button data-scenario="free"><b>Vol libre</b><small>Décollage et tours de piste</small></button>
+<button data-scenario="landing"><b>Approche à Poitiers</b><small>Arrondi et freinage</small></button>
+<button data-scenario="power" class="selected"><b>Perte partielle de puissance</b><small>Régime réduit</small></button>
+<button data-scenario="total"><b>Perte totale de puissance</b><small>Vol plané</small></button>
+<button data-scenario="ice"><b>Givrage carburateur</b><small>Régime en baisse</small></button>
+<button data-scenario="fire"><b>Feu moteur</b><small>Fumée au capot</small></button>
+<button data-scenario="airspeed"><b>Anémomètre défaillant</b><small>Vitesse indiquée figée</small></button>
+<button data-scenario="flaps"><b>Volets bloqués</b><small>Commande sans effet</small></button>
+<button data-scenario="hotOil"><b>Température d’huile élevée</b><small>Aiguille dans le rouge</small></button>
+<button data-scenario="oil"><b>Pression d’huile basse</b><small>Aiguille dans le rouge</small></button>
+<button data-scenario="unknown"><b>Panne inconnue</b><small>À diagnostiquer en vol</small></button>
+</div>
+<label id="aircraft-picker"><span>Avion</span>
+<select id="aircraft">
+<option value="evektor">Evektor SportStar RTC</option>
+<option value="dr400">Robin DR400-160</option>
+<option value="tecnam">Tecnam P2002 Sierra</option>
+<option value="rf6">Fournier RF-6B</option>
+<option value="c152">Cessna 152</option>
+<option value="c172">Cessna 172S Skyhawk</option>
+<option value="da40">Diamond DA40 XLT</option>
+</select><small id="aircraft-info">100 ch · Modèle de vol du jeu</small>
+</label>
+<label id="airport-picker" hidden>Aéroport de départ
+<select id="airport"><option value="poitiers">Poitiers-Biard · LFBI</option><option value="targe">Châtellerault-Targé · LFCA</option><option value="niort">Niort-Marais poitevin · LFBN</option><option value="angouleme">Angoulême-Brie-Champniers · LFBU</option><option value="limoges">Limoges-Bellegarde · LFBL</option><option value="saumur">Saumur-Saint-Florent · LFOD</option></select>
+</label>
+<button class="accent primary" id="start">Entrer dans le cockpit <span>→</span></button><button id="secondary" hidden>Menu des missions</button></section></div>
+</body></html>
