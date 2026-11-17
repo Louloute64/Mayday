@@ -442,7 +442,36 @@ function tick(now) {
   game.pitch+=(pitchTarget-game.pitch)*Math.min(1,dt*2.5);
   const engine=engineModel();
   game.rpm+=(engine.rpm-game.rpm)*Math.min(1,dt*2);
-  const speedTarget=profile.base+engine.power*profile.speedGain-game.pitch*1.35-game.flaps*4.1;
+    const cruiseReference = {
+    evektor: { rpm: 4000, knots: 70,  fastKnots: 96 },
+    dr400:   { rpm: 2420, knots: 114, fastKnots: 130 },
+    tecnam:  { rpm: 4600, knots: 100, fastKnots: 120 },
+    rf6:     { rpm: 2400, knots: 96,  fastKnots: 110 },
+    c152:    { rpm: 2300, knots: 96,  fastKnots: 105 },
+    c172:    { rpm: 2400, knots: 110, fastKnots: 124 },
+    da40:    { power: 0.75, knots: 137, fastKnots: 142 }
+  }[game.aircraft];
+
+  const availablePower = Math.max(0, Math.min(1, engine.power));
+  let levelSpeed = profile.base + availablePower * profile.speedGain;
+
+  if (cruiseReference) {
+    const referencePower = cruiseReference.power ??
+      (cruiseReference.rpm - profile.idle) / (profile.maxRpm - profile.idle);
+
+    if (availablePower <= referencePower) {
+      const fraction = availablePower / referencePower;
+      levelSpeed = profile.base +
+        (cruiseReference.knots - profile.base) * fraction;
+    } else {
+      const fraction = (availablePower - referencePower) / (1 - referencePower);
+      levelSpeed = cruiseReference.knots +
+        (cruiseReference.fastKnots - cruiseReference.knots) * fraction;
+    }
+  }
+
+  const speedTarget = levelSpeed - game.pitch * 1.35 - game.flaps * 4.1;
+  
   game.speed+=(speedTarget-game.speed)*Math.min(1,dt*.37);
   const poweredClimb=engine.power>=.62&&game.speed>58;
   const pitchFlight=game.pitch<0?game.pitch*2.35:poweredClimb?game.pitch*1.12*profile.climb:0;
