@@ -9,41 +9,61 @@ const runway={name:'Poitiers-Biard · Piste 03/21',x:1.78151,y:.27768,endX:2.427
 const targeRunway={name:'Châtellerault-Targé · Piste 18/36',x:-.0125766,y:.2163043,endX:.0125766,endY:-.2163043,heading:176.6724,length:.43334,halfWidth:.0054,viable:true,runway:true,quality:'Asphalte'};
 const midpoint=strip=>({x:(strip.x+strip.endX)/2,y:(strip.y+strip.endY)/2});
 const airfields={
-  poitiers:{name:'Poitiers-Biard',code:'LFBI',runway,numbers:['03','21'],photo:'poitiers-ign.jpg',detail:'poitiers-piste-ign.jpg',
+  poitiers:{qfu:29,name:'Poitiers-Biard',code:'LFBI',runway,numbers:['03','21'],photo:'poitiers-ign.jpg',detail:'poitiers-piste-ign.jpg',
     landmarks:[{name:'Poitiers',x:3.5,y:.29},{name:'A10',x:1.49,y:.61},{name:'Poitiers-Biard',...midpoint(runway)}]},
-  targe:{name:'Châtellerault-Targé',code:'LFCA',runway:targeRunway,numbers:['18','36'],photo:'targe-ign.jpg',detail:'targe-piste-ign.jpg',
+  targe:{qfu:177,name:'Châtellerault-Targé',code:'LFCA',runway:targeRunway,numbers:['18','36'],photo:'targe-ign.jpg',detail:'targe-piste-ign.jpg',
     landmarks:[{name:'Châtellerault',x:-1.1,y:1.75},{name:'Châtellerault-Targé',...midpoint(targeRunway)}]},
-  niort:{name:"Niort-Marais poitevin",code:'LFBN',numbers:["07", "25"],photo:'niort-ign.jpg',detail:'niort-piste-ign.jpg',
+  niort:{qfu:66,name:"Niort-Marais poitevin",code:'LFBN',numbers:["07", "25"],photo:'niort-ign.jpg',detail:'niort-piste-ign.jpg',
     runway:{name:"Niort-Marais poitevin · Piste 07/25",x:-0.443616,y:-0.184998,endX:0.443616,endY:0.184998,heading:67.362721,length:0.961289,halfWidth:0.008099,viable:true,runway:true,quality:'Asphalte'},
     landmarks:[{name:"Niort",x:-2.6276,y:0.7446},{name:"Niort-Marais poitevin",x:0.0000,y:0.0000}]},
-  angouleme:{name:"Angoulême-Brie-Champniers",code:'LFBU',numbers:["10", "28"],photo:'angouleme-ign.jpg',detail:'angouleme-piste-ign.jpg',
+  angouleme:{qfu:96,name:"Angoulême-Brie-Champniers",code:'LFBU',numbers:["10", "28"],photo:'angouleme-ign.jpg',detail:'angouleme-piste-ign.jpg',
     runway:{name:"Angoulême-Brie-Champniers · Piste 10/28",x:-0.498076,y:0.060692,endX:0.498076,endY:-0.060692,heading:96.947418,length:1.003520,halfWidth:0.012149,viable:true,runway:true,quality:'Asphalte'},
     landmarks:[{name:"Champniers",x:-0.5724,y:-0.9281},{name:"Angoulême-Brie-Champniers",x:0.0000,y:0.0000}]},
-  limoges:{name:"Limoges-Bellegarde",code:'LFBL',numbers:["03", "21"],photo:'limoges-ign.jpg',detail:'limoges-piste-ign.jpg',
+  limoges:{qfu:32,name:"Limoges-Bellegarde",code:'LFBL',numbers:["03", "21"],photo:'limoges-ign.jpg',detail:'limoges-piste-ign.jpg',
     runway:{name:"Limoges-Bellegarde · Piste 03/21",x:-0.347428,y:-0.531536,endX:0.347428,endY:0.531536,heading:33.169885,length:1.270019,halfWidth:0.012149,viable:true,runway:true,quality:'Asphalte'},
     landmarks:[{name:"Limoges",x:3.3596,y:-1.7927},{name:"Limoges-Bellegarde",x:0.0000,y:0.0000}]},
-  saumur:{name:"Saumur-Saint-Florent",code:'LFOD',numbers:["10", "28"],photo:'saumur-ign.jpg',detail:'saumur-piste-ign.jpg',
-    runway:{name:"Saumur-Saint-Florent · Piste 10/28",x:-0.389034,y:0.034228,endX:0.389034,endY:-0.034228,heading:95.028049,length:0.781074,halfWidth:0.008099,viable:true,runway:true,quality:'Asphalte'},
+  saumur:{qfu:94,name:"Saumur-Saint-Florent",code:'LFOD',numbers:["09", "27"],photo:'saumur-ign.jpg',detail:'saumur-piste-ign.jpg',
+    runway:{name:"Saumur-Saint-Florent · Piste 09/27",x:-0.389034,y:0.034228,endX:0.389034,endY:-0.034228,heading:95.028049,length:0.781074,halfWidth:0.008099,viable:true,runway:true,quality:'Asphalte'},
     landmarks:[{name:"Saumur",x:1.5074,y:0.1489},{name:"Saumur-Saint-Florent",x:0.0000,y:0.0000}]}
 };
+// Position de Targé dans le même repère Mercator que Poitiers.
+const routeOffset={x:12.125777,y:12.420963};
+const routeScale=1.00382436;
+const routePoint=({x,y})=>({x:routeOffset.x+x*routeScale,y:routeOffset.y+y*routeScale});
+const targeEnd=routePoint({x:targeRunway.endX,y:targeRunway.endY});
+const routeTarge={...airfields.targe,runway:{...targeRunway,...routePoint(targeRunway),
+  endX:targeEnd.x,endY:targeEnd.y,length:targeRunway.length*routeScale,halfWidth:targeRunway.halfWidth*routeScale}};
+const routeAirfields={poitiers:airfields.poitiers,targe:routeTarge};
+const regionalArea={name:'Poitiers – Châtellerault',code:'LFBI → LFCA',
+  photo:'poitiers-chatellerault-ign.jpg',runway,numbers:airfields.poitiers.numbers,
+  landmarks:[...airfields.poitiers.landmarks.filter(p=>p.name==='Poitiers'),
+    ...airfields.targe.landmarks.filter(p=>p.name==='Châtellerault').map(p=>({...p,...routePoint(p)}))]};
+function runwayEnd(area,index){
+  const {runway:strip}=area;
+  return {x:index?strip.endX:strip.x,y:index?strip.endY:strip.y,
+    heading:(strip.heading+index*180)%360,qfu:(area.qfu+index*180)%360,number:area.numbers[index]};
+}
 const compactTerrain=window.matchMedia('(pointer: coarse)').matches||
   (navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 const mapSize=compactTerrain?1600:4096, mapSpan=14;
 const map = document.createElement('canvas');
 map.width = map.height = mapSize;
 const groundContext = map.getContext('2d',{alpha:false});
-const pixelsPerMile = mapSize / mapSpan;
-const mapX = x => mapSize/2 + x*pixelsPerMile;
-const mapY = y => mapSize/2 - y*pixelsPerMile;
+let pixelsPerMile = mapSize / mapSpan;
+let mapOrigin={x:0,y:0};
+let localPhotos=[];
+const mapX = x => mapSize/2 + (x-mapOrigin.x)*pixelsPerMile;
+const mapY = y => mapSize/2 - (y-mapOrigin.y)*pixelsPerMile;
 let cameraLook=0;
 let runwayTrack=false;
-let parcelPixels=null;
+let parcelPixels=[];
 let activeArea;
 let runwayCenter;
 let landmarkData=[];
 let landmarks=[];
 let runwayShapes=[];
 let areaRequest=0;
+let terrainRevision=0;
 const terrainSource=source=>compactTerrain?source.replace('.jpg','-compact.jpg'):source;
 function loadImage(source){
   return new Promise(resolve=>{
@@ -54,15 +74,21 @@ function loadImage(source){
   });
 }
 function loadArea(key){
-  const area=airfields[key];
+  const regional=key==='route';
+  const area=regional?regionalArea:airfields[key];
   if(activeArea===area)return;
   activeArea=area;
   const request=++areaRequest;
   photoReady=false;
   detailReady=false;
-  parcelPixels=null;
+  parcelPixels=[];
   runwayCenter=midpoint(area.runway);
-  runwayShapes=makeRunwayShapes(area.runway,area.numbers);
+  pixelsPerMile=mapSize/(regional?34:mapSpan);
+  mapOrigin=regional?{x:routeOffset.x/2,y:routeOffset.y/2}:{x:0,y:0};
+  localPhotos=[];
+  runwayShapes=(regional?Object.values(routeAirfields):[area]).map(field=>({
+    center:midpoint(field.runway),shapes:makeRunwayShapes(field.runway,field.numbers)
+  }));
   landmarkData=area.landmarks.filter(point=>point.name!==area.name);
   const container=document.getElementById('landmarks');
   container.replaceChildren();
@@ -81,7 +107,17 @@ function loadArea(key){
     if(image)groundContext.drawImage(image,0,0,mapSize,mapSize);
     photoReady=true;
   });
-  loadImage(key+'-champs.png').then(image=>{
+  const zones=regional?[['poitiers',0,0,1],['targe',routeOffset.x,routeOffset.y,routeScale]]:[[key,0,0,1]];
+  if(regional){
+    for(const [localKey,x,y,zoom] of zones){
+      loadImage(terrainSource(airfields[localKey].photo)).then(image=>{
+        if(request!==areaRequest||!image)return;
+        localPhotos.push({image,x,y,span:mapSpan*zoom});
+        terrainRevision++;
+      });
+    }
+  }
+  for(const [localKey,x,y,zoom] of zones)loadImage(localKey+'-champs.png').then(image=>{
     if(request!==areaRequest||!image)return;
     const canvas=document.createElement('canvas');
     canvas.width=canvas.height=compactTerrain?1024:image.naturalWidth;
@@ -91,9 +127,10 @@ function loadArea(key){
     const rgba=context.getImageData(0,0,canvas.width,canvas.height).data;
     const data=new Uint8Array(canvas.width*canvas.height);
     for(let i=0;i<data.length;i++)data[i]=rgba[i*4]>128?1:0;
-    parcelPixels={width:canvas.width,height:canvas.height,data};
+    parcelPixels.push({width:canvas.width,height:canvas.height,data,x,y,span:mapSpan*zoom});
     canvas.width=canvas.height=1;
   });
+  if(!area.detail)return;
   loadImage(terrainSource(area.detail)).then(image=>{
     if(request!==areaRequest||!image)return;
     detailTexture.globalCompositeOperation='source-over';
@@ -109,10 +146,10 @@ function loadArea(key){
   });
 }
 function isParcel(x,y){
-  if(!parcelPixels)return false;
-  const {width,height,data}=parcelPixels;
-  const col=Math.floor((.5+x/mapSpan)*width),row=Math.floor((.5-y/mapSpan)*height);
-  return col>=0&&row>=0&&col<width&&row<height&&data[row*width+col]===1;
+  return parcelPixels.some(({width,height,data,x:cx,y:cy,span})=>{
+    const col=Math.floor((.5+(x-cx)/span)*width),row=Math.floor((.5-(y-cy)/span)*height);
+    return col>=0&&row>=0&&col<width&&row<height&&data[row*width+col]===1;
+  });
 }
 function isOpenField(flight){
   const heading=radians(flight.heading),sin=Math.sin(heading),cos=Math.cos(heading);
@@ -177,7 +214,8 @@ function makeRunwayShapes(runway,numbers){
     '5':['111','100','111','001','111'],
     '6':['111','100','111','101','111'],
     '7':['111','001','010','010','010'],
-    '8':['111','101','111','101','111']
+    '8':['111','101','111','101','111'],
+    '9':['111','101','111','001','111']
   };
   for(const [number,end,direction] of [[numbers[0],0,1],[numbers[1],runway.length,-1]]){
     [...number].forEach((digit,digitIndex)=>{
@@ -194,10 +232,11 @@ function makeRunwayShapes(runway,numbers){
   return shapes;
 }
 function drawRunway(flight,heading,elevation,focal,center,pitch){
-  if(Math.hypot(flight.x-runwayCenter.x,flight.y-runwayCenter.y)>3.6)return;
+  const nearby=runwayShapes.find(({center})=>Math.hypot(flight.x-center.x,flight.y-center.y)<=3.6);
+  if(!nearby)return;
   const sin=Math.sin(heading),cos=Math.cos(heading),near=.004;
   const sinPitch=Math.sin(pitch),cosPitch=Math.cos(pitch);
-  for(const {color,points} of runwayShapes){
+  for(const {color,points} of nearby.shapes){
     const quad=points.map(([x,y])=>{
       const dx=x-flight.x,dy=y-flight.y,forward=dx*sin+dy*cos;
       return [dx*cos-dy*sin,forward*cosPitch-elevation*sinPitch,elevation*cosPitch+forward*sinPitch];
@@ -279,6 +318,11 @@ function drawFlight(flight){
     forward.rotate(-heading);
     forward.scale(scale/pixelsPerMile,scale/pixelsPerMile);
     forward.drawImage(map,-mapX(flight.x),-mapY(flight.y));
+    for(const {image,x,y,span} of localPhotos){
+      if(Math.abs(flight.x-x)>span/2+8||Math.abs(flight.y-y)>span/2+8)continue;
+      const size=span*pixelsPerMile;
+      forward.drawImage(image,mapX(x)-mapX(flight.x)-size/2,mapY(y)-mapY(flight.y)-size/2,size,size);
+    }
     if(useDetail){
       detail.setTransform(1,0,0,1,0,0);
       detail.clearRect(0,0,detailSize,detailSize);

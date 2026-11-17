@@ -1,4 +1,8 @@
-<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#141918"><title>Mayday – Monomoteur</title><link rel="stylesheet" href="style.css?v=18"><script defer src="terrain.js?v=18"></script><script defer src="game.js?v=18"></script></head>
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#141918"><title>Mayday – Monomoteur</title><link rel="stylesheet" href="style.css?v=18"><script defer src="terrain.js?v=19"></script><script defer src="game.js?v=19"></script><style>
+#airport-picker{display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px 10px}
+#airport-picker select{width:100%;border:1px solid #5b685a;background:#29342a;border-radius:7px;padding:6px;font:inherit;color:inherit}
+#destination-picker{grid-column:1/-1;display:grid;gap:4px}
+</style></head>
 <body><main class="app"><header><a class="brand" href="./"><span class="logo">✈</span><span>MAYDAY<small>MONOMOTEUR</small></span></a><div class="head-right"><span id="mission">VOL LIBRE</span><button id="sound" hidden aria-pressed="false">Activer le son</button><button id="pause" disabled>Pause</button></div></header>
 <section class="cockpit" aria-label="Cockpit">
 <div class="window"><canvas id="terrain" aria-label="Vue en mouvement depuis le pare-brise"></canvas><div class="vignette"></div><div class="pillar"></div><div class="cowling"></div><div class="side-sill"></div><div class="side-wing"></div><div id="smoke"></div>
@@ -64,8 +68,18 @@
 <option value="da40">Diamond DA40 XLT</option>
 </select><small id="aircraft-info">100 ch · Modèle de vol du jeu</small>
 </label>
-<label id="airport-picker" hidden>Aéroport de départ
+<div id="airport-picker" hidden>
+<label for="airport">Aéroport de départ</label>
 <select id="airport"><option value="poitiers">Poitiers-Biard · LFBI</option><option value="targe">Châtellerault-Targé · LFCA</option><option value="niort">Niort-Marais poitevin · LFBN</option><option value="angouleme">Angoulême-Brie-Champniers · LFBU</option><option value="limoges">Limoges-Bellegarde · LFBL</option><option value="saumur">Saumur-Saint-Florent · LFOD</option></select>
+<label for="departure-runway">Piste de départ</label>
+<select id="departure-runway"></select>
+<label id="destination-picker">Destination
+<select id="destination">
+<option value="local">Tour de piste</option>
+<option value="0">Châtellerault-Targé · Piste 18</option>
+<option value="1">Châtellerault-Targé · Piste 36</option>
+</select>
 </label>
+</div>
 <button class="accent primary" id="start">Entrer dans le cockpit <span>→</span></button><button id="secondary" hidden>Menu des missions</button></section></div>
 </body></html>

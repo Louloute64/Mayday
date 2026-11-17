@@ -137,23 +137,31 @@ function reset() {
   const profile=aircraftProfile();
   game.speed=profile.initial;
   const area=scenario==='free'?game.airportSelection:'poitiers';
-  const strip=airfields[area].runway;
-  game.area=area;
-  game.fields=area==='poitiers'?fieldData:[strip];
-  loadArea(area);
+  const route=scenario==='free'&&area==='poitiers'&&el('destination').value!=='local';
+  const departure=airfields[area];
+  const strip=departure.runway;
+  const index=scenario==='free'?Number(el('departure-runway').value):0;
+  const end=runwayEnd(departure,index);
+  game.area=route?'route':area;
+  game.departure=departure;
+  game.navigation=route?routeTarge:departure;
+  game.navigationEnd=route?Number(el('destination').value):scenario==='free'?index:null;
+  game.runways=route?[strip,routeTarge.runway]:[strip];
+  game.fields=route?[routeTarge.runway,strip,...terrainFields.slice(0,2)]:area==='poitiers'?fieldData:[strip];
+  loadArea(game.area);
   if(scenario==='landing'){
     const direction=radians(strip.heading);
     Object.assign(game,{x:strip.x-Math.sin(direction)*.64,y:strip.y-Math.cos(direction)*.64,heading:strip.heading,alt:620,speed:profile.approach,throttle:46,selected:strip.name});
   }
   if(scenario==='free'){
-    const direction=radians(strip.heading);
-    Object.assign(game,{x:strip.x+Math.sin(direction)*.023,y:strip.y+Math.cos(direction)*.023,heading:strip.heading,alt:0,speed:0,throttle:0,rpm:profile.idle,onGround:true,departing:true,surface:strip,rollLimit:strip.length-.023,selected:strip.name});
+    const direction=radians(end.heading);
+    Object.assign(game,{x:end.x+Math.sin(direction)*.023,y:end.y+Math.cos(direction)*.023,heading:end.heading,alt:0,speed:0,throttle:0,rpm:profile.idle,onGround:true,departing:true,surface:strip,rollLimit:strip.length-.023,selected:strip.name});
   }
   game.rpm=engineModel().rpm;
   el('throttle').value=game.throttle;
   look(0);
   lastTick = performance.now();
-  message(scenario==='free'?'Au seuil. Augmente les gaz, puis cabre pour décoller.':scenario==='landing'?'En finale piste 03. Prépare ta descente et tes volets.':'Vol stabilisé. Surveille le tableau de bord.', false, 5);
+  message(scenario==='free'?'Au seuil '+end.number+'. Augmente les gaz, puis cabre pour décoller.':scenario==='landing'?'En finale piste 03. Prépare ta descente et tes volets.':'Vol stabilisé. Surveille le tableau de bord.', false, 5);
   el('overlay').hidden = true;
   el('pause').disabled = false;
   el('sound').hidden=false;
@@ -207,9 +215,8 @@ function adjustFlaps(direction){
 }
 function attemptLanding() {
   if(game.onGround)return message(game.departing?'Avion au sol, prêt au départ.':'Atterrissage réussi. Freine si nécessaire.');
-  const strip=airfields[game.area].runway;
   if(game.alt>75)return message('Poursuis l’approche. Le toucher des roues se fait au contact du sol.');
-  if(!contactSurface(strip))return message('Vise la piste ou une parcelle dégagée. Tu peux te poser dans un champ sans le sélectionner.');
+  if(!contactSurface())return message('Vise la piste ou une parcelle dégagée. Tu peux te poser dans un champ sans le sélectionner.');
   game.mode=0;
   message('Palier bas. Augmente doucement l’assiette pour l’arrondi.',false,5);
 }
@@ -218,12 +225,14 @@ function runwayPosition(strip){
   const dx=game.x-strip.x,dy=game.y-strip.y;
   return {along:dx*Math.sin(angle)+dy*Math.cos(angle),across:dx*Math.cos(angle)-dy*Math.sin(angle)};
 }
-function contactSurface(strip){
-  const {along,across}=runwayPosition(strip);
-  const reverse=Math.abs(delta(game.heading,strip.heading))>90;
-  const course=wrap(strip.heading+(reverse?180:0));
-  if(along>=-.018&&along<=strip.length+.012&&Math.abs(across)<strip.halfWidth+.01&&Math.abs(delta(game.heading,course))<28){
-    return {field:strip,available:Math.max(.025,reverse?along:strip.length-along)};
+function contactSurface(){
+  for(const strip of game.runways??[runway]){
+    const {along,across}=runwayPosition(strip);
+    const reverse=Math.abs(delta(game.heading,strip.heading))>90;
+    const course=wrap(strip.heading+(reverse?180:0));
+    if(along>=-.018&&along<=strip.length+.012&&Math.abs(across)<strip.halfWidth+.01&&Math.abs(delta(game.heading,course))<28){
+      return {field:strip,available:Math.max(.025,reverse?along:strip.length-along)};
+    }
   }
   if(isOpenField(game)){
     const named=game.fields.find(field=>!field.runway&&field.viable&&distance(field)<.19);
@@ -234,7 +243,7 @@ function contactSurface(strip){
   return field?{field,available:.095}:null;
 }
 function touchdown(){
-  const contact=contactSurface(airfields[game.area].runway);
+  const contact=contactSurface();
   if(!contact)return finish(false,'Toucher au sol hors piste ou hors d’une parcelle dégagée.');
   if(!contact.field.viable)return finish(false,'Atterrissage interrompu par les obstacles du champ.');
   if(Math.abs(game.bank)>14)return finish(false,'Toucher des roues avec une inclinaison excessive.');
@@ -244,6 +253,7 @@ function touchdown(){
   message(raisedNose?'Atterrissage réussi · Toucher sur le train principal.':'Atterrissage réussi · Roues au sol.',false,7);
 }
 const distance = ({ x,y }) => Math.hypot(x-game.x,y-game.y);
+const magnetic=heading=>wrap(heading-((game.departure??airfields.poitiers).runway.heading-(game.departure??airfields.poitiers).qfu));
 const bearing = ({ x,y }) => wrap(Math.atan2(x-game.x,y-game.y)*180/Math.PI);
 function feedingTanks(){
   const left=game.fuelSelector==='left'||game.fuelSelector==='both';
@@ -273,7 +283,7 @@ function engineModel() {
 }
 function meters() {
   const {oil,temp}=engineModel();
-  return [game.frozenSpeed??game.speed,game.bank,game.alt,game.turnRate,game.heading,game.vs,game.rpm,oil,temp,(game.fuelLeft+game.fuelRight)/2];
+  return [game.frozenSpeed??game.speed,game.bank,game.alt,game.turnRate,magnetic(game.heading),game.vs,game.rpm,oil,temp,(game.fuelLeft+game.fuelRight)/2];
 }
 function render() {
   updateAircraftPanel();
@@ -281,7 +291,7 @@ function render() {
   const active = game.stage !== 'menu';
   const secured = game.securedAt != null;
   el('mission').textContent = active ? (game.selection==='unknown' ? 'PANNE INCONNUE' : mission.name.toUpperCase()) : 'VOL LIBRE';
-  el('heading').textContent = String(wrap(Math.round(game.heading))).padStart(3,'0')+'°';
+  el('heading').textContent = String(wrap(Math.round(magnetic(game.heading)))).padStart(3,'0')+'°';
   const elapsed = Math.floor(game.time);
   el('clock').textContent = String(Math.floor(elapsed/60)).padStart(2,'0')+':'+String(elapsed%60).padStart(2,'0');
   const altitudeMode=game.levelHeld||game.stage==='menu'?'PALIER':engineModel().power<.1?'VOL PLANÉ':'PALIER NON TENU';
@@ -302,7 +312,7 @@ function render() {
   el('terrain').parentElement.classList.toggle('burning',game.alerted && game.scenario==='fire' && !secured);
   const approach='Vise un champ dégagé ou la piste. En courte finale, remets les ailes à plat et augmente doucement l’assiette.';
   const groundHelp=game.departing?'Augmente les gaz et utilise les palonniers pour rester dans l’axe. Cabre pour décoller.':'Atterrissage réussi. Réduis les gaz et freine pour t’arrêter.';
-  el('objective').textContent=game.onGround?groundHelp:game.scenario==='free'?'Vol libre · Reviens en finale et pose-toi pour enchaîner un tour de piste.':
+  el('objective').textContent=game.onGround?groundHelp:game.scenario==='free'?(game.area==='route'?'Rejoins Châtellerault-Targé. Le bandeau indique le cap vers le seuil et l’axe d’atterrissage.':'Vol libre · Reviens en finale et pose-toi pour enchaîner un tour de piste.'):
     game.scenario==='landing'?'Reste dans l’axe. Près du sol, fais l’arrondi et laisse les roues toucher.':
     game.recovered?'Régime rétabli. Stabilise le vol.':!game.alerted?'Surveille les instruments et le paysage.':
     ['ice','power'].includes(game.scenario)&&game.selection==='unknown'&&!game.selected?'Observe comment le régime réagit aux commandes moteur. Repère aussi un champ.':
@@ -331,7 +341,7 @@ function render() {
     const field=game.fields[i];
     button.hidden=!field;
     if(!field)return;
-    const dir=bearing(field);
+    const dir=magnetic(bearing(field));
     const selected=field.name===game.selected;
     const bearingText=String(wrap(Math.round(dir))).padStart(3,'0')+'°';
     markerElements[i].classList.toggle('chosen',selected);
@@ -345,22 +355,22 @@ function render() {
 }
 function renderApproachCue(){
   const cue=el('surface-cue');
-  const surface=game.stage==='playing'&&!game.onGround&&game.alt<260?contactSurface(airfields[game.area].runway):null;
+  const surface=game.stage==='playing'&&!game.onGround&&game.alt<260?contactSurface():null;
   cue.hidden=!surface?.field.viable||surface.field.runway;
   if(!cue.hidden)cue.textContent='CHAMP DÉGAGÉ SOUS L’AVION';
-  const area=airfields[game.area];
+  const area=game.navigation??airfields.poitiers;
   const strip=area.runway;
   const ends=[{x:strip.x,y:strip.y},{x:strip.endX,y:strip.endY}];
-  const index=distance(ends[0])<=distance(ends[1])?0:1;
+  const index=game.navigationEnd??(distance(ends[0])<=distance(ends[1])?0:1);
   const threshold=ends[index];
   const course=wrap(strip.heading+index*180);
   const targetBearing=distance(threshold)<.025?course:bearing(threshold);
   const offset=delta(game.heading,targetBearing);
   const arrow=Math.abs(offset)<7?'↑':offset<0?'↖':'↗';
   const format=value=>String(wrap(Math.round(value))).padStart(3,'0')+'°';
-  el('nav-runway').textContent='Piste '+area.numbers[index];
-  el('nav-bearing').textContent=arrow+' '+format(targetBearing);
-  el('nav-axis').textContent=format(course);
+  el('nav-runway').textContent=(game.area==='route'?area.code+' · ':'')+'Piste '+area.numbers[index];
+  el('nav-bearing').textContent=arrow+' '+format(distance(threshold)<.025?runwayEnd(area,index).qfu:magnetic(targetBearing));
+  el('nav-axis').textContent=format(runwayEnd(area,index).qfu);
   el('nav-distance').textContent=distance(threshold).toFixed(1)+' NM';
   el('runway-camera').textContent='Voir la piste';
 }
@@ -378,15 +388,21 @@ function updateGround(dt){
   game.rollDistance+=travel;
   move(travel);
   if(game.scenario==='free'){
-    const strip=airfields[game.area].runway;
-    const {along,across}=runwayPosition(strip);
-    if(game.surface?.runway&&game.speed>42&&(along<-.027||along>strip.length+.027||Math.abs(across)>strip.halfWidth+.025)){
-      finish(false,'Sortie de piste au roulage.');
+    if(game.surface?.runway){
+      const strip=game.surface;
+      const {along,across}=runwayPosition(strip);
+      if(game.speed>42&&(along<-.027||along>strip.length+.027||Math.abs(across)>strip.halfWidth+.025)){
+        finish(false,'Sortie de piste au roulage.');
+        return;
+      }
+    }
+    if(game.area==='route'&&game.surface===routeTarge.runway&&!game.departing&&game.speed<1){
+      finish(true,'Atterrissage réussi à Châtellerault-Targé. Arrêt complet.');
       return;
     }
     if(!game.brakes&&engine.power>.62&&game.speed>=profile.rotation-game.flaps*3&&game.mode>0){
       Object.assign(game,{alt:9,vs:140,onGround:false,departing:false,rollDistance:0,pitch:4});
-      message('Décollé. Prends de l’altitude puis engage ton tour de piste.',false,7);
+      message(game.area==='route'?'Décollé. Suis le cap vers le seuil de Châtellerault-Targé.':'Décollé. Prends de l’altitude puis engage ton tour de piste.',false,7);
     }else if(game.speed<1&&!game.departing){
       game.departing=true;
       message('Arrêt complet. Tu peux repartir pour un nouveau tour.',false,6);
@@ -480,8 +496,7 @@ function tick(now) {
   if(engine.power<.1){
     vertical=Math.min(-4.5,-profile.sink-.004*(game.speed-profile.glide)**2+Math.min(0,game.pitch)*1.45-game.flaps*.65-Math.abs(game.bank)*.045);
   }
-  const strip=airfields[game.area].runway;
-  const nearLanding=game.alt<=42&&game.speed>=43-game.flaps*2&&Math.abs(game.bank)<12&&contactSurface(strip);
+  const nearLanding=game.alt<=42&&game.speed>=43-game.flaps*2&&Math.abs(game.bank)<12&&contactSurface();
   game.flare=Boolean(nearLanding&&game.pitch>-.5&&game.pitch<12&&(game.mode<=0||engine.power<.60));
   const levelPower=.38+game.flaps*.038+Math.abs(game.bank)*.0025;
   game.levelHeld=game.mode===0&&!game.flare&&engine.power>=levelPower&&game.speed>=54-game.flaps*2;
@@ -516,7 +531,7 @@ function move(distance){
 let lastDraw=0,lastPanel=0,lastFrame='';
 
 function positionRunwayPin(){
-  const area=airfields[game.area];
+  const area=game.navigation??airfields.poitiers;
   const strip=area.runway;
   const anchor=[.5,.2,.8].map(fraction=>({
     x:strip.x+(strip.endX-strip.x)*fraction,
@@ -537,8 +552,8 @@ function animation(now) {
     return;
   }
   tick(now);
-  if(runwayTrack)cameraLook=delta(game.heading,bearing(midpoint(airfields[game.area].runway)));
-  const frame=[game.area,game.x,game.y,game.alt,game.heading,game.bank,game.pitch,cameraLook,runwayTrack,windshield.clientWidth,windshield.clientHeight,photoReady,detailReady].join('/');
+  if(runwayTrack)cameraLook=delta(game.heading,bearing(midpoint((game.navigation??airfields.poitiers).runway)));
+  const frame=[game.area,game.x,game.y,game.alt,game.heading,game.bank,game.pitch,cameraLook,runwayTrack,windshield.clientWidth,windshield.clientHeight,photoReady,detailReady,terrainRevision].join('/');
   if(frame!==lastFrame&&now-lastDraw>=(compactTerrain?50:30)){
     lastFrame=frame;
     lastDraw=now;
@@ -809,7 +824,20 @@ el('aircraft').addEventListener('change',event=>{
   game.rpm=engineModel().rpm;
   render();
 });
-el('airport').addEventListener('change',event=>{game.airportSelection=event.target.value;});
+function updateRunwayChoices(){
+  const airport=airfields[game.airportSelection];
+  el('departure-runway').replaceChildren(...airport.numbers.map((number,index)=>{
+    const {qfu}=runwayEnd(airport,index);
+    return new Option('Piste '+number+' · '+String(qfu).padStart(3,'0')+'°',index);
+  }));
+  el('destination-picker').hidden=airport.code!=='LFBI';
+  el('destination').value='local';
+}
+el('airport').addEventListener('change',event=>{
+  game.airportSelection=event.target.value;
+  updateRunwayChoices();
+});
+updateRunwayChoices();
 function setRudder(direction){
   game.rudder=game.stage==='playing'?direction:0;
   render();
