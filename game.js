@@ -499,12 +499,11 @@ function tick(now) {
   if(game.speed<41-game.flaps*2&&!game.flare)vertical=Math.min(vertical,-17);
   game.vs+=(vertical*60-game.vs)*Math.min(1,dt*1.65);
   game.alt=Math.max(0,Math.min(4200,game.alt+dt*game.vs/60));
-    const power = Math.max(0, Math.min(1, engine.power));
-  const boost = Math.max(0, (power - 0.35) / 0.65);
-  const altitudeFactor = Math.max(0, Math.min(1, (game.alt - 150) / 550));
+  const travelPower = Math.max(0, Math.min(1, engine.power));
+  const boost = Math.max(0, (travelPower - 0.25) / 0.75);
+  const altitudeFactor = Math.max(0, Math.min(1, (game.alt - 60) / 240));
 
-  // Accentue le déplacement en vol, puis revient à la normale près du sol.
-  const travelMultiplier = 1 + 1.8 * boost * altitudeFactor;
+  const travelMultiplier = 1 + 4 * boost * altitudeFactor;
   move((game.speed / 3600) * dt * travelMultiplier);
   if(game.alt<=0)touchdown();
   else if(game.recovered&&game.time-game.securedAt>6)finish(true,'Le régime a remonté et tu as repris un vol stable.');
