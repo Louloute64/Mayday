@@ -499,7 +499,13 @@ function tick(now) {
   if(game.speed<41-game.flaps*2&&!game.flare)vertical=Math.min(vertical,-17);
   game.vs+=(vertical*60-game.vs)*Math.min(1,dt*1.65);
   game.alt=Math.max(0,Math.min(4200,game.alt+dt*game.vs/60));
-  move(game.speed/3600*dt);
+    const power = Math.max(0, Math.min(1, engine.power));
+  const boost = Math.max(0, (power - 0.35) / 0.65);
+  const altitudeFactor = Math.max(0, Math.min(1, (game.alt - 150) / 550));
+
+  // Accentue le déplacement en vol, puis revient à la normale près du sol.
+  const travelMultiplier = 1 + 1.8 * boost * altitudeFactor;
+  move((game.speed / 3600) * dt * travelMultiplier);
   if(game.alt<=0)touchdown();
   else if(game.recovered&&game.time-game.securedAt>6)finish(true,'Le régime a remonté et tu as repris un vol stable.');
   else if(game.alerted&&game.scenario==='fire'&&game.securedAt===null&&game.time>mission.delay+mission.limit)finish(false,'L’incendie s’est propagé.');
